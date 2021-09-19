@@ -1,10 +1,8 @@
 #!/usr/bin/python3
-
 import socket
 
 host = 'www.google.com'
 port = 80
-
 
 client = socket.socket(socket.AF_INET , socket.SOCK_STREAM)
 
