@@ -24,6 +24,7 @@ def main():
             client_handler.start()
         except:
             print('[-] Something went wrong')
+            socket.close()
             exit()
 
 def handle_client(client_socket):
