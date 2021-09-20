@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-from _typeshed import Self
 import argparse 
 import socket 
 import shlex 
@@ -7,7 +6,6 @@ import subprocess
 import sys 
 import textwrap 
 import threading
-from typing_extensions import TypeVarTuple
 
 def execute(cmd):
     # runs the command and returns the output
@@ -62,13 +60,61 @@ class Netcat:
 
         while True:
             try:
-                client_socket = self.socket.accept()
-                client_thread = threading.Thread(target=self.handle , args= client_socket)
+                client_socket, _ = self.socket.accept()
+                client_thread = threading.Thread(target=self.handle, args=(client_socket,))
                 client_thread.start()
-            except :
-                print("[-] Something went Wrong")
+            except Exception as e :
+                print(f"[-] server killed {e}")
                 self.socket.close()
                 sys.exit()
+
+    def handle(self, client_socket):
+        if self.args.execute:
+            try:
+                output = execute(self.args.execute)
+                client_socket.send(output.encode())
+           
+            except Exception as e:
+                
+                print(f"[-] server killed {e}")
+
+        
+        elif self.args.upload:
+            file_buffer = b''
+            while True:
+                data = client_socket.recv(4096)
+                if data:
+                    file_buffer += data
+                else:
+                    break
+            
+            with open(self.args.upload, 'wb') as f:
+                # write to the file
+                f.write(file_buffer)
+
+            message = f"[+] File Saved {self.args.upload}"
+            # let client know that file saved 
+            client_socket.send(message.encode())
+
+        elif self.args.command:
+            cmd_buffer = b'' 
+            while True:
+                try:
+                    client_socket.send(b'CMD: #> ') 
+                    while '\n' not in cmd_buffer.decode():
+                        # get the commands from client
+                        cmd_buffer += client_socket.recv(1024)
+                        response = execute(cmd_buffer.decode()) 
+                        if response:
+                            # send the response to client
+                            client_socket.send(response.encode())
+                            cmd_buffer = b'' 
+
+                except Exception as e:
+                    # if something wrong happend
+                    print(f'[-] server killed {e}')
+                    self.socket.close()
+                    sys.exit()
 
 
 if __name__ == '__main__':
@@ -76,11 +122,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Net Tools',  formatter_class=argparse.RawDescriptionHelpFormatter,  #
     epilog=textwrap.dedent(
         '''
-        netcat.py -t 192.168.1.108 -p 5555 -l -c # command shell 
-        netcat.py -t 192.168.1.108 -p 5555 -l -u=mytest.txt # upload to file 
-        netcat.py -t 192.168.1.108 -p 5555 -l -e="cat /etc/passwd" # execute command 
-        echo 'ABC' | ./netcat.py -t 192.168.1.108 -p 135 # echo text to server port 135 
-        netcat.py -t 192.168.1.108 -p 5555 # connect to server
+        netcat.py -t 10.10.10.10 -p 5555 -l -c # command shell 
+        netcat.py -t 10.10.10.10 -p 5555 -l -u=mytest.txt # upload to file 
+        netcat.py -t 10.10.10.10 -p 5555 -l -e="cat /etc/passwd" # execute command 
+        echo 'ABC' | ./netcat.py -t 10.10.10.10 -p 135 # echo text to server port 135 
+        netcat.py -t 10.10.10.10 -p 5555 # connect to server
         '''
     ))
 
@@ -108,7 +154,7 @@ if __name__ == '__main__':
     if args.listen:
         buffer = ''
     else:
-        sys.stdin.read()
+        buffer = sys.stdin.read()
 
     nc = Netcat(args , buffer.encode()) 
     nc.run()
