@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 from cmd import Cmd
 import sys
 import getpass
@@ -10,6 +12,7 @@ class Term(Cmd):
         try:
             client = paramiko.SSHClient()
             client.set_missing_host_key_policy(paramiko.AutoAddPolicy)
+
             client.connect(ip, port=port , username=username , password=passwd)
             _, stdout, stderr = client.exec_command(args)
             output = stdout.readlines() + stderr.readlines()
@@ -18,7 +21,6 @@ class Term(Cmd):
                 for line in output:
                     print(line.strip())
 
-            
         except Exception as e:
             print(f'[-] {e}')
 
@@ -44,4 +46,7 @@ else:
     print('usage :  python3 ssh.py user localhost')
     print(len(sys.argv))
 
-term.cmdloop()
+try:
+    term.cmdloop()
+except Exception as e:
+    print(f'[-] {e}')
